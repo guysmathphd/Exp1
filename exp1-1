@@ -1,0 +1,33 @@
+from typing import TextIO
+# importing the required module
+import matplotlib.pyplot as plt
+from my_functions import make_random_matrix, write_to_file, read_whole_file, simple_plot
+# import make_random_matrix
+from my_functions2 import test1
+
+print('Helllo')
+
+x = [1, 2, 3]
+
+for y in x:
+    print(y)
+
+print(test1(1, 2))
+test1(3, 5)
+make_random_matrix(3, 3)
+path = 'C:\\Users\\Guy\\PycharmProjects\\Exp1'
+file = open(path + '\\testfile.csv', "w+")
+
+file.write("This, is, a, test\n")
+file.write("To, add, more, lines.")
+
+file.close()
+
+write_to_file('C:\\Users\\Guy\\PycharmProjects\\Exp1', '\\testfile2.csv', '-1,-2,-3,1,2,3\n5,6,7,8,9,10')
+
+my_file = read_whole_file('C:\\Users\\Guy\\PycharmProjects\\Exp1', '\\testfile2.csv')
+
+print(my_file)
+print(my_file)
+
+simple_plot([1, 2, 3], [4, 6, 5], 'x values', 'y values', 'graph title')
