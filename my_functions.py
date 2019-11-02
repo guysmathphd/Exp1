@@ -196,6 +196,7 @@ def complete_fig(xlabel, ylabel, title, text):
     plt.title(title)
     plt.legend()
     plt.text(1, 600, 'A' + r'$_i$' + r'$_j$' + ' = ' + '\n' + text)
+    plt.text(1, 300, r'$\.x$' + '(t) = ' + r'$\sum_{i,j} A_{ij}\frac{x_i}{x_j}$')
     #  plt.show()
     return
 
@@ -203,4 +204,5 @@ def complete_fig(xlabel, ylabel, title, text):
 def save_figure(resultspath):
     plt.savefig(resultspath + 'fig001.png')
     plt.savefig(resultspath + 'fig001.pdf')
+    plt.show()
     return
