@@ -41,14 +41,14 @@ def exp1_1_main(input_file_path_str):
     input_struct = read_input(input_file_path_str)
 
     for i in range(1, input_struct.nrows):
-        print('Running scenario ' + i)
-        run_scenario(input_struct, i)
-        print('Finished running scenario ' + i)
+        print('Running scenario ' + str(i))
+        run_scenario(input_struct.row_values(i))
+        print('Finished running scenario ' + str(i))
 
-    # for i in range(1, input_struct.nrows):
-    #     print('Plotting scenario  ' + i)
-    #     plot_scenario(input_struct, i)
-    #     print('Finished plotting scneario ' + i)
+    for i in range(1, input_struct.nrows):
+        print('Plotting scenario  ' + str(i))
+        plot_scenario(input_struct.row_values(i))
+        print('Finished plotting scneario ' + str(i))
 
     return
 
