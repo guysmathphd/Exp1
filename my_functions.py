@@ -196,7 +196,7 @@ def complete_fig(xlabel, ylabel, title, text):
     plt.title(title)
     plt.legend()
     plt.text(1, 600, 'A' + r'$_i$' + r'$_j$' + ' = ' + '\n' + text)
-    plt.text(1, 300, r'$\.x$' + '(t) = ' + r'$\sum_{i,j} A_{ij}\frac{x_i}{x_j}$')
+    plt.text(1, 300, r'$\.x$' + '(t) = ' + r'$\sum_{i,j} A_{ij}x_i x_j^{-1}$')
     #  plt.show()
     return
 
