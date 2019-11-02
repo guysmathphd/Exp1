@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import xlrd
 import numpy
 import csv
-
+from IPython.display import display, Markdown, Latex
 
 def make_random_matrix(num_rows=3, num_columns=3):
     from random import seed
@@ -126,55 +126,81 @@ def print_statevector(statevector, i, resultspath, scenarioid):
 
 def plot_scenario(scenariodata):
     resultspath = scenariodata[5]
-    scenarioid = scenariodata[0]
-    #matrix_str = read_matrix_output(resultspath)
-    csv_data = read_csv_results(resultspath, 'results' + str(scenarioid))
-    time = read_column(csv_data, 0, 1)
+    scenarioid = int(scenariodata[0])
+    matrix_str = read_matrix_output(resultspath, scenarioid)
+    csv_data = read_csv_results(resultspath, 'results' + str(scenarioid) + '.csv')
     num_of_nodes = count_columns(csv_data) - 1
-    #create_empty_fig()
-    for i in range(1, num_of_nodes):
-        xidata = read_column(csv_data, i, 1)
-        add_data_to_fig(time, xidata, 'x' + str(i))
-    complete_fig('time', 'x(t)', 'Network Dynamics 1')
+    num_rows_data = count_rows(csv_data) - 1
+    for i in range(num_of_nodes):
+        csv_data = read_csv_results(resultspath, 'results' + str(scenarioid) + '.csv')
+        if i == 0:  # time column
+            time = read_column(csv_data, 0, 1, num_rows_data)
+        else:
+            xidata = read_column(csv_data, i, 1, num_rows_data)
+            add_data_to_fig(time, xidata, 'x' + str(i))
+    complete_fig('time', 'x(t)', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str)
     save_figure(resultspath)
     return
 
 
-def read_matrix_ouput(resultspath):
-    return
+def read_matrix_output(resultspath, scenarioid):
+    contents = read_whole_file(resultspath, 'resultsmatrix' + str(scenarioid) + '.txt')
+    return contents
 
 
 def read_csv_results(resultspath, filename):
     csv_file = open(resultspath + filename, "r")
     csv_data = csv.reader(csv_file)
+    csv_file.seek(0)
     return csv_data
+
 
 def count_columns(csv_data):
     ncol = len(next(csv_data))
     return ncol
 
 
-def read_column(csv_data, col_num, start_row):
-    col = numpy.zeros(csv_data.line_num - 1)
+def count_rows(csv_data):
     i = 0
-    for rows in csv_data:
-        col[i] = rows[col_num]
+    for row in csv_data:
         i = i + 1
-    return col[start_row:-1]
+    return i
+
+
+def read_column(csv_data, col_num, start_row, end_row):
+    col = numpy.zeros(end_row - start_row + 1)
+    i = 0  # counter for elements of col
+    j = 0  # counter for rows
+    for rows in csv_data:
+        if j < start_row:
+            j = j + 1
+            continue
+        else:
+            if j > end_row:
+                break
+            else:
+                col[i] = rows[col_num]
+                j = j + 1
+                i = i + 1
+    return col
+
 
 def add_data_to_fig(x1, y1, textlabel):
     plt.plot(x1, y1, label=textlabel)
     return
 
-def complete_fig(xlabel, ylabel, title):
+
+def complete_fig(xlabel, ylabel, title, text):
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
     plt.legend()
-    plt.show()
+    plt.text(1, 600, 'A' + r'$_i$' + r'$_j$' + ' = ' + '\n' + text)
+    #  plt.show()
     return
 
 
 def save_figure(resultspath):
-
+    plt.savefig(resultspath + 'fig001.png')
+    plt.savefig(resultspath + 'fig001.pdf')
     return
