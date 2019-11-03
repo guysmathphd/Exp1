@@ -5,10 +5,10 @@ import numpy
 import csv
 from IPython.display import display, Markdown, Latex
 
-def make_random_matrix(num_rows=3, num_columns=3):
+def make_random_matrix(num_rows=3, num_columns=3, seed_index=1):
     from random import seed
     from random import randint
-    seed(1)
+    seed(seed_index)
     matrix = numpy.zeros((num_rows, num_columns))
     for i in range(num_rows):
         for j in range(num_columns):
@@ -71,8 +71,9 @@ def init_scenario_data(input_struct):
     x1_0 = input_struct[3]
     maxtime = int(input_struct[4])
     resultspath = input_struct[5]
+    seed_index = input_struct[6]
     if loc == -1:
-        matrix = make_random_matrix(random_matrix_size, random_matrix_size)
+        matrix = make_random_matrix(random_matrix_size, random_matrix_size, seed_index)
     else:
         # read_matrix_from_loc(loc)
         matrix = numpy.zeros(random_matrix_size, random_matrix_size)
