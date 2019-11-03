@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import xlrd
 import numpy
 import csv
+import os
 from IPython.display import display, Markdown, Latex
 
 def make_random_matrix(num_rows=3, num_columns=3, seed_index=1):
@@ -18,6 +19,8 @@ def make_random_matrix(num_rows=3, num_columns=3, seed_index=1):
 
 
 def write_to_file(file_path, file_name, line_str):
+    if not os.path.exists(file_path):
+        os.mkdir(file_path)
     f = open(file_path + file_name, 'w+')
     f.write(line_str)
     f.close()
@@ -132,14 +135,15 @@ def plot_scenario(scenariodata):
     csv_data = read_csv_results(resultspath, 'results' + str(scenarioid) + '.csv')
     num_of_nodes = count_columns(csv_data) - 1
     num_rows_data = count_rows(csv_data) - 1
+    f, ax = plt.subplots()
     for i in range(num_of_nodes):
         csv_data = read_csv_results(resultspath, 'results' + str(scenarioid) + '.csv')
         if i == 0:  # time column
             time = read_column(csv_data, 0, 1, num_rows_data)
         else:
             xidata = read_column(csv_data, i, 1, num_rows_data)
-            add_data_to_fig(time, xidata, 'x' + str(i))
-    complete_fig('time', 'x(t)', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str)
+            add_data_to_fig(ax, time, xidata, 'x' + str(i))
+    complete_fig(ax, 'time', 'x(t)', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str)
     save_figure(resultspath)
     return
 
@@ -186,18 +190,18 @@ def read_column(csv_data, col_num, start_row, end_row):
     return col
 
 
-def add_data_to_fig(x1, y1, textlabel):
-    plt.plot(x1, y1, label=textlabel)
+def add_data_to_fig(ax, x1, y1, textlabel):
+    ax.plot(x1, y1, label=textlabel)
     return
 
 
-def complete_fig(xlabel, ylabel, title, text):
+def complete_fig(ax, xlabel, ylabel, title, text):
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
     plt.legend()
-    plt.text(1, 600, 'A' + r'$_i$' + r'$_j$' + ' = ' + '\n' + text)
-    plt.text(1, 300, r'$\.x$' + '(t) = ' + r'$\sum_{i,j} A_{ij}x_i x_j^{-1}$')
+    plt.text(0.3, 0.7, 'A' + r'$_i$' + r'$_j$' + ' = ' + '\n' + text, transform=ax.transAxes)
+    plt.text(0.1, 0.4, r'$\.x$' + '(t) = ' + r'$\sum_{i,j} A_{ij}x_i x_j^{-1}$', transform=ax.transAxes)
     #  plt.show()
     return
 
