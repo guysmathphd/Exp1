@@ -142,8 +142,8 @@ def plot_scenario(scenariodata):
             time = read_column(csv_data, 0, 1, num_rows_data)
         else:
             xidata = read_column(csv_data, i, 1, num_rows_data)
-            add_data_to_fig(ax, time, xidata, 'x' + str(i))
-    complete_fig(ax, 'time', 'x(t)', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str)
+            add_data_to_fig(ax, time, xidata, r'$x_' + str(i) + '$')
+    complete_fig(ax, 'Time', r'$x_i(t)$', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str)
     save_figure(resultspath)
     return
 
@@ -201,7 +201,7 @@ def complete_fig(ax, xlabel, ylabel, title, text):
     plt.title(title)
     plt.legend()
     plt.text(0.3, 0.7, 'A' + r'$_i$' + r'$_j$' + ' = ' + '\n' + text, transform=ax.transAxes)
-    plt.text(0.1, 0.4, r'$\.x$' + '(t) = ' + r'$\sum_{i,j} A_{ij}x_i x_j^{-1}$', transform=ax.transAxes)
+    plt.text(0.1, 0.4, r'$\.x_i$' + '(t) = ' + r'$\sum_{i,j} A_{ij}x_i x_j^{-1}$', transform=ax.transAxes)
     #  plt.show()
     return
 
