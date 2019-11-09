@@ -21,5 +21,5 @@ def exp1_1_main(input_file_path_str, recalc_flag, redraw_flag, first_scenario, l
     return
 
 
-# input_file_path_str = 'C:\\Users\\Guy\\PycharmProjects\\Exp1Scenarios\\Exp1-Input.xlsx'
-# exp1_1_main(input_file_path_str)
+input_file_path_str = 'C:\\Users\\Guy\\PycharmProjects\\Exp1Scenarios\\Exp1-Input.xlsx'
+exp1_1_main(input_file_path_str, 1, 1, 10, 10)

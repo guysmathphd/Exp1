@@ -79,7 +79,7 @@ def init_scenario_data(input_struct):
     if loc == -1:
         matrix = make_random_matrix(random_matrix_size, random_matrix_size, seed_index)
     else:
-        matrix = read_matrix_from_file(loc)
+        matrix = load_matrix_from_file(loc, random_matrix_size)
     return scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamic_model
 
 
@@ -93,7 +93,7 @@ def run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicMode
         if dynamicModel == 1:
             statevector = step_lin_dynamics1(statevector, matrix)
         else:
-            if dynamicModel ==2:
+            if dynamicModel == 2:
                 statevector = step_lin_dynamics2(statevector, matrix)
         print_statevector(statevector, i, resultspath, scenarioid)
     return
@@ -125,9 +125,10 @@ def step_lin_dynamics2(statevector, matrix):
     for i in range(len(statevector)):
         dxdt[i] = 1 - statevector[i]
         for j in range(len(statevector)):
-            dxdt[i] = dxdt[i] - matrix[i][j] * statevecor[i] * statevector[j]
+            dxdt[i] = dxdt[i] - matrix[i][j] * statevector[i] * statevector[j]
     dx = dxdt * 0.01
     updatedstatevector = numpy.add(statevector, dx)
+    return updatedstatevector
 
 
 def print_statevector(statevector, i, resultspath, scenarioid):
@@ -143,6 +144,8 @@ def print_statevector(statevector, i, resultspath, scenarioid):
 def plot_scenario(scenariodata):
     resultspath = scenariodata[5]
     scenarioid = int(scenariodata[0])
+    x1_0 = scenariodata[3]
+    dynamic_model = int(scenariodata[7])
     matrix_str = read_matrix_output(resultspath, scenarioid)
     csv_data = read_csv_results(resultspath, 'results' + str(scenarioid) + '.csv')
     num_of_nodes = count_columns(csv_data) - 1
@@ -155,7 +158,7 @@ def plot_scenario(scenariodata):
         else:
             xidata = read_column(csv_data, i, 1, num_rows_data)
             add_data_to_fig(ax, time, xidata, r'$x_' + str(i) + '$')
-    complete_fig(ax, 'Time', r'$x_i(t)$', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str)
+    complete_fig(ax, 'Time', r'$x_i(t)$', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str, dynamic_model, x1_0)
     save_figure(resultspath)
     return
 
@@ -165,9 +168,13 @@ def read_matrix_output(resultspath, scenarioid):
     return contents
 
 
-def load_matrix_from_file(matrix_file_path):
+def load_matrix_from_file(matrix_file_path, size):
     with open(matrix_file_path, 'r') as f:
-        matrix = [[int(num) for num in line.split(',')] for line in f]
+        matrix_temp = [[int(num) for num in line.split(',')] for line in f]
+    matrix = numpy.zeros((size, size))
+    for i in range(size):
+        for j in range(size):
+            matrix[i][j] = matrix_temp[i][j]
     return matrix
 
 
@@ -213,13 +220,23 @@ def add_data_to_fig(ax, x1, y1, textlabel):
     return
 
 
-def complete_fig(ax, xlabel, ylabel, title, text):
+def complete_fig(ax, xlabel, ylabel, title, text, dynamic_model, x1_0):
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
     plt.legend()
-    plt.text(0.3, 0.7, 'A' + r'$_i$' + r'$_j$' + ' = ' + '\n' + text, transform=ax.transAxes)
-    plt.text(0.1, 0.4, r'$\.x_i$' + '(t) = ' + r'$\sum_{i,j} A_{ij}x_i x_j^{-1}$', transform=ax.transAxes)
+    plt.text(0.3, 0.6, 'A' + r'$_i$' + r'$_j$' + ' = ' + '\n' + text, transform=ax.transAxes)
+    if dynamic_model == 1:
+        plt.text(0.1, 0.4, r'$\.x_i$' + '(t) = ' + r'$\sum_{i,j} A_{ij}x_i x_j^{-1}$', transform=ax.transAxes)
+    else:
+        if dynamic_model == 2:
+            plt.text(0.1, 0.4, r'$\dfrac{dx_i}{dt}$' + ' = ' + r'$1 - x_i - \sum_{j} A_{ij}x_i x_j$', transform=ax.transAxes)
+    if x1_0 != 1:
+        plt.text(0.1, 0.9, r'$x_1(0) = $' + str(x1_0), transform=ax.transAxes)
+        i_str = 'for i > 0'
+    else:
+        i_str = 'for all i'
+    plt.text(0.1, 0.8, r'$x_i(0) = 1, $' + i_str, transform=ax.transAxes)
     #  plt.show()
     return
 
