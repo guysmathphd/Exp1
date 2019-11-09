@@ -60,10 +60,10 @@ def read_input(input_file_path_str):
 
 
 def run_scenario(input_struct):
-    scenarioid, loc, matrix, x1_0, maxtime, resultspath = \
+    scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamicModel = \
         init_scenario_data(input_struct)
 
-    run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath)
+    run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel)
     return
 
 
@@ -75,23 +75,26 @@ def init_scenario_data(input_struct):
     maxtime = int(input_struct[4])
     resultspath = input_struct[5]
     seed_index = input_struct[6]
+    dynamic_model = int(input_struct[7])
     if loc == -1:
         matrix = make_random_matrix(random_matrix_size, random_matrix_size, seed_index)
     else:
-        # read_matrix_from_loc(loc)
-        matrix = numpy.zeros(random_matrix_size, random_matrix_size)
-
-    return scenarioid, loc, matrix, x1_0, maxtime, resultspath
+        matrix = read_matrix_from_file(loc)
+    return scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamic_model
 
 
-def run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath):
+def run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel):
     write_to_file(resultspath, 'resultsmatrix' + str(scenarioid) + '.txt', str(matrix))
     statevector = numpy.ones(len(matrix))
     statevector[0] = x1_0
     init_output_file(resultspath, scenarioid, statevector)
     for i in range(maxtime*100):
         print('Advancing dynamics step ' + str(i/100))
-        statevector = step_lin_dynamics(statevector, matrix)
+        if dynamicModel == 1:
+            statevector = step_lin_dynamics1(statevector, matrix)
+        else:
+            if dynamicModel ==2:
+                statevector = step_lin_dynamics2(statevector, matrix)
         print_statevector(statevector, i, resultspath, scenarioid)
     return
 
@@ -106,16 +109,25 @@ def init_output_file(resultspath, scenarioid, statevector):
     return
 
 
-def step_lin_dynamics(statevector, matrix):
+def step_lin_dynamics1(statevector, matrix):
 
     dxdt = numpy.zeros(len(statevector))
     for i in range(len(statevector)):
         for j in range(len(statevector)):
             dxdt[i] = (dxdt[i] + matrix[i][j] * statevector[i] * 1/statevector[j])
     dxdt = dxdt * 0.01
-
     updatedstatevector = numpy.add(statevector, dxdt)
     return updatedstatevector
+
+
+def step_lin_dynamics2(statevector, matrix):
+    dxdt = numpy.zeros(len(statevector))
+    for i in range(len(statevector)):
+        dxdt[i] = 1 - statevector[i]
+        for j in range(len(statevector)):
+            dxdt[i] = dxdt[i] - matrix[i][j] * statevecor[i] * statevector[j]
+    dx = dxdt * 0.01
+    updatedstatevector = numpy.add(statevector, dx)
 
 
 def print_statevector(statevector, i, resultspath, scenarioid):
@@ -151,6 +163,12 @@ def plot_scenario(scenariodata):
 def read_matrix_output(resultspath, scenarioid):
     contents = read_whole_file(resultspath, 'resultsmatrix' + str(scenarioid) + '.txt')
     return contents
+
+
+def load_matrix_from_file(matrix_file_path):
+    with open(matrix_file_path, 'r') as f:
+        matrix = [[int(num) for num in line.split(',')] for line in f]
+    return matrix
 
 
 def read_csv_results(resultspath, filename):
