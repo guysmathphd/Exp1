@@ -88,7 +88,8 @@ def run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicMode
     statevector = numpy.ones(len(matrix))
     statevector[0] = x1_0
     init_output_file(resultspath, scenarioid, statevector)
-    for i in range(maxtime*100):
+    print_statevector(statevector, 0, resultspath, scenarioid)
+    for i in range(1, maxtime*100):
         print('Advancing dynamics step ' + str(i/100))
         if dynamicModel == 1:
             statevector = step_lin_dynamics1(statevector, matrix)
@@ -159,7 +160,7 @@ def plot_scenario(scenariodata):
             xidata = read_column(csv_data, i, 1, num_rows_data)
             add_data_to_fig(ax, time, xidata, r'$x_' + str(i) + '$')
     complete_fig(ax, 'Time', r'$x_i(t)$', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str, dynamic_model, x1_0)
-    save_figure(resultspath)
+    save_figure(resultspath, str(scenarioid), 'fig001')
     return
 
 
@@ -170,7 +171,7 @@ def read_matrix_output(resultspath, scenarioid):
 
 def load_matrix_from_file(matrix_file_path, size):
     with open(matrix_file_path, 'r') as f:
-        matrix_temp = [[int(num) for num in line.split(',')] for line in f]
+        matrix_temp = [[float(num) for num in line.split(',')] for line in f]
     matrix = numpy.zeros((size, size))
     for i in range(size):
         for j in range(size):
@@ -241,8 +242,8 @@ def complete_fig(ax, xlabel, ylabel, title, text, dynamic_model, x1_0):
     return
 
 
-def save_figure(resultspath):
-    plt.savefig(resultspath + 'fig001.png')
-    plt.savefig(resultspath + 'fig001.pdf')
+def save_figure(resultspath, scenarioid, figname):
+    plt.savefig(resultspath + scenarioid + '_fig001.png')
+    plt.savefig(resultspath + scenarioid + '_fig001.pdf')
     plt.show()
     return
