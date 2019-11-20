@@ -60,10 +60,10 @@ def read_input(input_file_path_str):
 
 
 def run_scenario(input_struct):
-    scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamicModel = \
+    scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method = \
         init_scenario_data(input_struct)
 
-    run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel)
+    run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method)
     return
 
 
@@ -76,27 +76,31 @@ def init_scenario_data(input_struct):
     resultspath = input_struct[5]
     seed_index = input_struct[6]
     dynamic_model = int(input_struct[7])
+    integration_method = int(input_struct[8])
     if loc == -1:
         matrix = make_random_matrix(random_matrix_size, random_matrix_size, seed_index)
     else:
         matrix = load_matrix_from_file(loc, random_matrix_size)
-    return scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamic_model
+    return scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamic_model, integration_method
 
 
-def run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel):
+def run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method):
     write_to_file(resultspath, 'resultsmatrix' + str(scenarioid) + '.txt', str(matrix))
     statevector = numpy.ones(len(matrix))
     statevector[0] = x1_0
+    time = 0
     init_output_file(resultspath, scenarioid, statevector)
-    print_statevector(statevector, 0, resultspath, scenarioid)
-    for i in range(1, maxtime*100):
+    print_statevector(statevector, time, resultspath, scenarioid)
+    #for i in range(1, maxtime*100):
+    while time <= maxtime:
         print('Advancing dynamics step ' + str(i/100))
-        if dynamicModel == 1:
-            statevector = step_lin_dynamics1(statevector, matrix)
-        else:
-            if dynamicModel == 2:
-                statevector = step_lin_dynamics2(statevector, matrix)
-        print_statevector(statevector, i, resultspath, scenarioid)
+        statevector, time = step_lin_dynamics(statevector, time, matrix, dynamicModel, integration_method, time_step)
+        # if dynamicModel == 1:
+        #     statevector = step_lin_dynamics1(statevector, matrix)
+        # else:
+        #     if dynamicModel == 2:
+        #         statevector = step_lin_dynamics2(statevector, matrix)
+        print_statevector(statevector, time, resultspath, scenarioid)
     return
 
 
@@ -108,6 +112,12 @@ def init_output_file(resultspath, scenarioid, statevector):
     file_name = 'results' + str(scenarioid) + '.csv'
     write_to_file(resultspath, file_name, line_str)
     return
+
+def step_lin_dynamics(statevector, time, matrix, dynamicModel, integration_method = 1, time_step = 0.01):
+    f = select_dynamic_model(dynamicModel)
+    im = select_integration_method(integration_method)
+    updatedstatevector = im(statevector, matrix, f, time_step)
+    return updatedstatevector
 
 
 def step_lin_dynamics1(statevector, matrix):
@@ -132,9 +142,9 @@ def step_lin_dynamics2(statevector, matrix):
     return updatedstatevector
 
 
-def print_statevector(statevector, i, resultspath, scenarioid):
+def print_statevector(statevector, time, resultspath, scenarioid):
     file_name = 'results' + str(scenarioid) + '.csv'
-    line_str = str(i/100) + ','
+    line_str = str(time) + ','
     for j in range(len(statevector)):
         line_str = line_str + str(statevector[j]) + ','
     line_str = line_str + '\n'
