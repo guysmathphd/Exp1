@@ -17,9 +17,8 @@ def exp1_1_main(input_file_path_str, recalc_flag, redraw_flag, first_scenario, l
             print('Plotting scenario  ' + str(i))
             plot_scenario(input_struct.row_values(i))
             print('Finished plotting scneario ' + str(i))
-
     return
 
 
-input_file_path_str = 'C:\\Users\\Guy\\PycharmProjects\\Exp1Scenarios\\Exp1-Input.xlsx'
-exp1_1_main(input_file_path_str, 1, 1, 16, 16)
+input_file_path_str = 'C:\\Users\\Guy\\PycharmProjects\\Exp1Scenarios2\\Exp1-Input.xlsx'
+exp1_1_main(input_file_path_str, 0, 1, 17, 17)

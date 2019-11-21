@@ -4,6 +4,8 @@ import xlrd
 import numpy
 import csv
 import os
+import math
+from rk4 import *
 from IPython.display import display, Markdown, Latex
 
 def make_random_matrix(num_rows=3, num_columns=3, seed_index=1):
@@ -93,8 +95,8 @@ def run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicMode
     print_statevector(statevector, time, resultspath, scenarioid)
     #for i in range(1, maxtime*100):
     while time <= maxtime:
-        print('Advancing dynamics step ' + str(i/100))
-        statevector, time = step_lin_dynamics(statevector, time, matrix, dynamicModel, integration_method, time_step)
+        print('Advancing dynamics step ' + str(time))
+        statevector, time = step_lin_dynamics(statevector, time, matrix, dynamicModel, integration_method)
         # if dynamicModel == 1:
         #     statevector = step_lin_dynamics1(statevector, matrix)
         # else:
@@ -116,9 +118,77 @@ def init_output_file(resultspath, scenarioid, statevector):
 def step_lin_dynamics(statevector, time, matrix, dynamicModel, integration_method = 1, time_step = 0.01):
     f = select_dynamic_model(dynamicModel)
     im = select_integration_method(integration_method)
-    updatedstatevector = im(statevector, matrix, f, time_step)
+    updatedstatevector = im(time, statevector, matrix, f, time_step)
+    time = time + time_step
+    return updatedstatevector, time
+
+
+def select_dynamic_model(dynamicModel):
+    if dynamicModel == 1:
+        return dynamicModel1
+    if dynamicModel == 2:
+        return dynamicModel2
+    if dynamicModel == 3:
+        return dynamicModel3
+    if dynamicModel == 4:
+        return dynamicModel4
+    if dynamicModel == 5:
+        return dynamicModel5
+
+
+def dynamicModel1(time, statevector, matrix):
+    dxdt = numpy.zeros(len(statevector))
+    for i in range(len(statevector)):
+        for j in range(len(statevector)):
+            dxdt[i] = (dxdt[i] + matrix[i][j] * statevector[i] * 1/statevector[j])
+            return dxdt
+
+
+def dynamicModel2(time, statevector, matrix):
+    dxdt = numpy.zeros(len(statevector))
+    for i in range(len(statevector)):
+        dxdt[i] = 1 - statevector[i]
+        for j in range(len(statevector)):
+            dxdt[i] = dxdt[i] - matrix[i][j] * statevector[i] * statevector[j]
+            return dxdt
+
+
+def dynamicModel3(time, statevector, matrix):
+    dxdt = numpy.zeros(len(statevector))
+    for i in range(len(statevector)):
+        dxdt[i] = math.cos(time)
+        return dxdt
+
+
+def dynamicModel4(time, statevector, matrix):
+    dxdt = 1
+    return dxdt
+
+
+def dynamicModel5(time, statevector, matrix):
+    dxdt = numpy.matmul(matrix, statevector)
+    return dxdt
+
+
+def select_integration_method(integration_method):
+    if integration_method == 1:
+        return my_euler, 'Euler integration'
+    if integration_method == 2:
+        return my_rk4, 'Runge Kutta 4th Order'
+
+
+def my_euler(time, statevector, matrix, f, time_step):
+    dxdt = f(time, statevector, matrix)
+    dxdt = dxdt * time_step
+    updatedstatevector = numpy.add(statevector, dxdt)
     return updatedstatevector
 
+
+def my_rk4(time, statevector, matrix, f, time_step):
+    def f_A(time, statevecotr):
+        return f(time, statevector, matrix)
+    updatedstatevector = rk4(time, statevector, time_step, f_A)
+    return updatedstatevector
 
 def step_lin_dynamics1(statevector, matrix):
 
@@ -157,6 +227,8 @@ def plot_scenario(scenariodata):
     scenarioid = int(scenariodata[0])
     x1_0 = scenariodata[3]
     dynamic_model = int(scenariodata[7])
+    integration_method = int(scenariodata[8])
+    compare_to = int(scenariodata[9])
     matrix_str = read_matrix_output(resultspath, scenarioid)
     csv_data = read_csv_results(resultspath, 'results' + str(scenarioid) + '.csv')
     num_of_nodes = count_columns(csv_data) - 1
@@ -169,8 +241,36 @@ def plot_scenario(scenariodata):
         else:
             xidata = read_column(csv_data, i, 1, num_rows_data)
             add_data_to_fig(ax, time, xidata, r'$x_' + str(i) + '$')
-    complete_fig(ax, 'Time', r'$x_i(t)$', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str, dynamic_model, x1_0)
+    if compare_to != -1:
+        fRef, ref_str = select_reference(compare_to)
+        add_reference_to_fig(ax, time, fRef, ref_str)
+    _, intMethStr = select_integration_method(integration_method)
+    complete_fig(ax, 'Time', r'$x_i(t)$', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str, dynamic_model, x1_0, intMethStr)
     save_figure(resultspath, str(scenarioid), 'fig001')
+    return
+
+def select_reference(compare_to):
+    if compare_to == 1:
+        fRef = numpy.sin
+        ref_str = 'x = sin(t)'
+    if compare_to == 2:
+        fRef = numpy.exp
+        ref_str = r'$x = e^t$'
+    if compare_to == 3:
+        def fRef3(t):
+            return numpy.exp(t) + numpy.exp(-t)
+        fRef = fRef3
+        ref_str = r'$x = e^t + e^{-t}'
+    if compare_to == 4:
+        def fRef4(t):
+            return numpy.exp(t) - numpy.exp(-t)
+        fRef = fRef4
+        ref_str = r'$x = e^t - e^{-t}'
+    return fRef, ref_str
+
+
+def add_reference_to_fig(ax, time, fRef, ref_str):
+    add_data_to_fig(ax, time, fRef(time), ref_str)
     return
 
 
@@ -231,7 +331,7 @@ def add_data_to_fig(ax, x1, y1, textlabel):
     return
 
 
-def complete_fig(ax, xlabel, ylabel, title, text, dynamic_model, x1_0):
+def complete_fig(ax, xlabel, ylabel, title, text, dynamic_model, x1_0, intMethStr):
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
@@ -239,9 +339,9 @@ def complete_fig(ax, xlabel, ylabel, title, text, dynamic_model, x1_0):
     plt.text(0.3, 0.6, 'A' + r'$_i$' + r'$_j$' + ' = ' + '\n' + text, transform=ax.transAxes)
     if dynamic_model == 1:
         plt.text(0.1, 0.4, r'$\.x_i$' + '(t) = ' + r'$\sum_{i,j} A_{ij}x_i x_j^{-1}$', transform=ax.transAxes)
-    else:
-        if dynamic_model == 2:
+    if dynamic_model == 2:
             plt.text(0.1, 0.4, r'$\dfrac{dx_i}{dt}$' + ' = ' + r'$1 - x_i - \sum_{j} A_{ij}x_i x_j$', transform=ax.transAxes)
+    plt.text(0.1, 0.5, intMethStr, transform=ax.transAxes)
     if x1_0 != 1:
         plt.text(0.1, 0.9, r'$x_1(0) = $' + str(x1_0), transform=ax.transAxes)
         i_str = 'for i > 0'
