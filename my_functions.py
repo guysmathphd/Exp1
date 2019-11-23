@@ -6,6 +6,7 @@ import csv
 import os
 import math
 from rk4 import *
+from rkf45 import *
 from IPython.display import display, Markdown, Latex
 
 def make_random_matrix(num_rows=3, num_columns=3, seed_index=1):
@@ -62,10 +63,10 @@ def read_input(input_file_path_str):
 
 
 def run_scenario(input_struct):
-    scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method = \
-        init_scenario_data(input_struct)
+    scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method, _, time_step, relerror, \
+    abserror =  init_scenario_data(input_struct)
 
-    run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method)
+    run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method, time_step, relerror, abserror)
     return
 
 
@@ -79,35 +80,42 @@ def init_scenario_data(input_struct):
     seed_index = input_struct[6]
     dynamic_model = int(input_struct[7])
     integration_method = int(input_struct[8])
+    compare_to = int(input_struct[9])
+    time_step = input_struct[10]
+    relerr = input_struct[11]
+    abserr = input_struct[12]
     if loc == -1:
         matrix = make_random_matrix(random_matrix_size, random_matrix_size, seed_index)
     else:
         matrix = load_matrix_from_file(loc, random_matrix_size)
-    return scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamic_model, integration_method
+    return scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamic_model, integration_method, compare_to, \
+           time_step, relerr, abserr
 
 
-def run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method):
+def run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method, time_step, relerr, abserr):
     write_to_file(resultspath, 'resultsmatrix' + str(scenarioid) + '.txt', str(matrix))
     statevector = numpy.ones(len(matrix))
     statevector[0] = x1_0
-    time = 0
+    time = 0; yp = numpy.zeros(len(statevector)); flag = -1; iterations = 1
     init_output_file(resultspath, scenarioid, statevector)
-    print_statevector(statevector, time, resultspath, scenarioid)
+    print_statevector(statevector, time, resultspath, scenarioid, iterations)
     #for i in range(1, maxtime*100):
-    while time <= maxtime:
-        print('Advancing dynamics step ' + str(time))
-        statevector, time = step_lin_dynamics(statevector, time, matrix, dynamicModel, integration_method)
+    while abs(time - maxtime) >= 0.01:
+        print(str(iterations), 'Advancing dynamics step ' + str(time))
+        statevector, yp, time, flag = step_lin_dynamics(statevector, time, matrix, dynamicModel, integration_method, time_step,\
+                                              relerr, abserr, yp, flag, maxtime)
+        iterations += 1
         # if dynamicModel == 1:
         #     statevector = step_lin_dynamics1(statevector, matrix)
         # else:
         #     if dynamicModel == 2:
         #         statevector = step_lin_dynamics2(statevector, matrix)
-        print_statevector(statevector, time, resultspath, scenarioid)
+        print_statevector(statevector, time, resultspath, scenarioid, iterations)
     return
 
 
 def init_output_file(resultspath, scenarioid, statevector):
-    line_str = 'time,'
+    line_str = 'iteration, time,'
     for i in range(len(statevector)):
         line_str = line_str + 'x' + str(i+1) + ','
     line_str = line_str + '\n'
@@ -115,12 +123,13 @@ def init_output_file(resultspath, scenarioid, statevector):
     write_to_file(resultspath, file_name, line_str)
     return
 
-def step_lin_dynamics(statevector, time, matrix, dynamicModel, integration_method = 1, time_step = 0.01):
+def step_lin_dynamics(statevector, time, matrix, dynamicModel, integration_method, time_step, relerr,\
+                      abserr, yp, flag, maxtime):
     f = select_dynamic_model(dynamicModel)
-    im = select_integration_method(integration_method)
-    updatedstatevector = im(time, statevector, matrix, f, time_step)
-    time = time + time_step
-    return updatedstatevector, time
+    im, _ = select_integration_method(integration_method, time_step, relerr, abserr)
+    updatedstatevector, yp_out, updated_time, flag_out = im(time, statevector, matrix, f, time_step, relerr, abserr,\
+                                                            yp, flag, maxtime)
+    return updatedstatevector, yp_out, updated_time, flag_out
 
 
 def select_dynamic_model(dynamicModel):
@@ -170,25 +179,35 @@ def dynamicModel5(time, statevector, matrix):
     return dxdt
 
 
-def select_integration_method(integration_method):
+def select_integration_method(integration_method, time_step, relerr, abserr):
     if integration_method == 1:
-        return my_euler, 'Euler integration'
+        return my_euler, 'Euler integration Timestep = ' + str(time_step)
     if integration_method == 2:
-        return my_rk4, 'Runge Kutta 4th Order'
+        return my_rk4, 'RK4 Timestep = ' + str(time_step)
+    if integration_method == 3:
+        return my_rk4_adaptive_Ts, 'Rk4 Adaptive Timestep Relerr = ' + str(relerr) + ' Abserr = ' + str(abserr)
 
 
-def my_euler(time, statevector, matrix, f, time_step):
+def my_rk4_adaptive_Ts(time, statevector, matrix, f, time_step, relerr, abserr, yp, flag, maxtime):
+    def f_A(time, statevector):
+        return f(time, statevector, matrix) # matrix is global in the scope of my_rk4
+    neqn = len(statevector); y = statevector; yp = numpy.zeros(neqn); t = time; tout = maxtime
+    y, yp, t, flag_out = r8_rkf45(f_A, neqn, y, yp, t, tout, relerr, abserr, flag)
+    return y, yp, t, flag_out
+
+
+def my_euler(time, statevector, matrix, f, time_step, dummy1, dummy2, dummy3, dummy4):
     dxdt = f(time, statevector, matrix)
     dxdt = dxdt * time_step
     updatedstatevector = numpy.add(statevector, dxdt)
-    return updatedstatevector
+    return updatedstatevector, -1, time + time_step, -1
 
 
-def my_rk4(time, statevector, matrix, f, time_step):
-    def f_A(time, statevecotr):
-        return f(time, statevector, matrix)
+def my_rk4(time, statevector, matrix, f, time_step, dummy1, dummy2, dummy3, dummy4):
+    def f_A(time, statevector):
+        return f(time, statevector, matrix) # matrix is global in the scope of my_rk4
     updatedstatevector = rk4(time, statevector, time_step, f_A)
-    return updatedstatevector
+    return updatedstatevector, -1, time + time_step, -1
 
 def step_lin_dynamics1(statevector, matrix):
 
@@ -212,9 +231,9 @@ def step_lin_dynamics2(statevector, matrix):
     return updatedstatevector
 
 
-def print_statevector(statevector, time, resultspath, scenarioid):
+def print_statevector(statevector, time, resultspath, scenarioid, iterations):
     file_name = 'results' + str(scenarioid) + '.csv'
-    line_str = str(time) + ','
+    line_str = str(iterations) + ',' + str(time) + ','
     for j in range(len(statevector)):
         line_str = line_str + str(statevector[j]) + ','
     line_str = line_str + '\n'
@@ -223,29 +242,35 @@ def print_statevector(statevector, time, resultspath, scenarioid):
 
 
 def plot_scenario(scenariodata):
-    resultspath = scenariodata[5]
-    scenarioid = int(scenariodata[0])
-    x1_0 = scenariodata[3]
-    dynamic_model = int(scenariodata[7])
-    integration_method = int(scenariodata[8])
-    compare_to = int(scenariodata[9])
+    scenarioid, _, matrix, x1_0, _, resultspath, dynamic_model, integration_method, compare_to, time_step, \
+        relerr, abserr = init_scenario_data(scenariodata)
+    # resultspath = scenariodata[5]
+    # scenarioid = int(scenariodata[0])
+    # x1_0 = scenariodata[3]
+    # dynamic_model = int(scenariodata[7])
+    # integration_method = int(scenariodata[8])
+    # compare_to = int(scenariodata[9])
+    # time_step = scenariodata([10])
     matrix_str = read_matrix_output(resultspath, scenarioid)
     csv_data = read_csv_results(resultspath, 'results' + str(scenarioid) + '.csv')
     num_of_nodes = count_columns(csv_data) - 1
-    num_rows_data = count_rows(csv_data) - 1
+    num_rows_data = count_rows(csv_data)
     f, ax = plt.subplots()
     for i in range(num_of_nodes):
         csv_data = read_csv_results(resultspath, 'results' + str(scenarioid) + '.csv')
-        if i == 0:  # time column
-            time = read_column(csv_data, 0, 1, num_rows_data)
-        else:
+        if i == 0:
+            iterations = read_column(csv_data, i, 1, num_rows_data)
+        if i == 1:  # time column
+            time = read_column(csv_data, i, 1, num_rows_data)
+        if i > 1:
             xidata = read_column(csv_data, i, 1, num_rows_data)
-            add_data_to_fig(ax, time, xidata, r'$x_' + str(i) + '$')
+            _, intMethStr = select_integration_method(integration_method, time_step, relerr, abserr)
+            add_data_to_fig(ax, time, xidata, r'$x_' + str(i-1) + '$' + intMethStr)
     if compare_to != -1:
         fRef, ref_str = select_reference(compare_to)
         add_reference_to_fig(ax, time, fRef, ref_str)
-    _, intMethStr = select_integration_method(integration_method)
-    complete_fig(ax, 'Time', r'$x_i(t)$', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str, dynamic_model, x1_0, intMethStr)
+    complete_fig(ax, 'Time', r'$x_i(t)$', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str, dynamic_model,\
+                 x1_0, intMethStr, time_step, i)
     save_figure(resultspath, str(scenarioid), 'fig001')
     return
 
@@ -331,7 +356,7 @@ def add_data_to_fig(ax, x1, y1, textlabel):
     return
 
 
-def complete_fig(ax, xlabel, ylabel, title, text, dynamic_model, x1_0, intMethStr):
+def complete_fig(ax, xlabel, ylabel, title, text, dynamic_model, x1_0, intMethStr, time_step, i):
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
@@ -341,13 +366,17 @@ def complete_fig(ax, xlabel, ylabel, title, text, dynamic_model, x1_0, intMethSt
         plt.text(0.1, 0.4, r'$\.x_i$' + '(t) = ' + r'$\sum_{i,j} A_{ij}x_i x_j^{-1}$', transform=ax.transAxes)
     if dynamic_model == 2:
             plt.text(0.1, 0.4, r'$\dfrac{dx_i}{dt}$' + ' = ' + r'$1 - x_i - \sum_{j} A_{ij}x_i x_j$', transform=ax.transAxes)
-    plt.text(0.1, 0.5, intMethStr, transform=ax.transAxes)
+    #plt.text(0.1, 0.5, intMethStr + ', time step = ' + str(time_step), transform=ax.transAxes)
     if x1_0 != 1:
         plt.text(0.1, 0.9, r'$x_1(0) = $' + str(x1_0), transform=ax.transAxes)
-        i_str = 'for i > 0'
+        if i > 2:
+            i_str = 'for i > 0'
+        else:
+            i_str = ''
     else:
         i_str = 'for all i'
-    plt.text(0.1, 0.8, r'$x_i(0) = 1, $' + i_str, transform=ax.transAxes)
+    if i > 2:
+        plt.text(0.1, 0.8, r'$x_i(0) = 1, $' + i_str, transform=ax.transAxes)
     #  plt.show()
     return
 
