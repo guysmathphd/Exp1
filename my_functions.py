@@ -94,7 +94,7 @@ def init_scenario_data(input_struct):
 
 def run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method, time_step, relerr, abserr):
     write_to_file(resultspath, 'resultsmatrix' + str(scenarioid) + '.txt', str(matrix))
-    statevector = numpy.ones(len(matrix))
+    statevector = numpy.zeros(len(matrix))
     statevector[0] = x1_0
     time = 0; yp = numpy.zeros(len(statevector)); flag = -1; iterations = 1
     init_output_file(resultspath, scenarioid, statevector)
@@ -196,14 +196,14 @@ def my_rk4_adaptive_Ts(time, statevector, matrix, f, time_step, relerr, abserr, 
     return y, yp, t, flag_out
 
 
-def my_euler(time, statevector, matrix, f, time_step, dummy1, dummy2, dummy3, dummy4):
+def my_euler(time, statevector, matrix, f, time_step, dummy1, dummy2, dummy3, dummy4, dummy5):
     dxdt = f(time, statevector, matrix)
     dxdt = dxdt * time_step
     updatedstatevector = numpy.add(statevector, dxdt)
     return updatedstatevector, -1, time + time_step, -1
 
 
-def my_rk4(time, statevector, matrix, f, time_step, dummy1, dummy2, dummy3, dummy4):
+def my_rk4(time, statevector, matrix, f, time_step, dummy1, dummy2, dummy3, dummy4, dummy5):
     def f_A(time, statevector):
         return f(time, statevector, matrix) # matrix is global in the scope of my_rk4
     updatedstatevector = rk4(time, statevector, time_step, f_A)
@@ -242,7 +242,7 @@ def print_statevector(statevector, time, resultspath, scenarioid, iterations):
 
 
 def plot_scenario(scenariodata):
-    scenarioid, _, matrix, x1_0, _, resultspath, dynamic_model, integration_method, compare_to, time_step, \
+    scenarioid, _, matrix, x1_0, maxtime, resultspath, dynamic_model, integration_method, compare_to, time_step, \
         relerr, abserr = init_scenario_data(scenariodata)
     # resultspath = scenariodata[5]
     # scenarioid = int(scenariodata[0])
@@ -265,10 +265,11 @@ def plot_scenario(scenariodata):
         if i > 1:
             xidata = read_column(csv_data, i, 1, num_rows_data)
             _, intMethStr = select_integration_method(integration_method, time_step, relerr, abserr)
-            add_data_to_fig(ax, time, xidata, r'$x_' + str(i-1) + '$' + intMethStr)
+            add_data_to_fig(ax, time, xidata, r'$x_' + str(i-1) + '$' + intMethStr, num_of_nodes - i + 1)
     if compare_to != -1:
         fRef, ref_str = select_reference(compare_to)
-        add_reference_to_fig(ax, time, fRef, ref_str)
+        ref_time = numpy.linspace(0, maxtime, maxtime*100 + 1)
+        add_reference_to_fig(ax, ref_time, fRef, ref_str)
     complete_fig(ax, 'Time', r'$x_i(t)$', 'Network Dynamics Scenario ' + str(scenarioid), matrix_str, dynamic_model,\
                  x1_0, intMethStr, time_step, i)
     save_figure(resultspath, str(scenarioid), 'fig001')
@@ -290,12 +291,12 @@ def select_reference(compare_to):
         def fRef4(t):
             return numpy.exp(t) - numpy.exp(-t)
         fRef = fRef4
-        ref_str = r'$x = e^t - e^{-t}'
+        ref_str = r'$x = e^t - e^{-t}$'
     return fRef, ref_str
 
 
 def add_reference_to_fig(ax, time, fRef, ref_str):
-    add_data_to_fig(ax, time, fRef(time), ref_str)
+    add_data_to_fig(ax, time, fRef(time), ref_str, 1)
     return
 
 
@@ -351,8 +352,8 @@ def read_column(csv_data, col_num, start_row, end_row):
     return col
 
 
-def add_data_to_fig(ax, x1, y1, textlabel):
-    ax.plot(x1, y1, label=textlabel)
+def add_data_to_fig(ax, x1, y1, textlabel, line_width):
+    ax.plot(x1, y1, label=textlabel, linewidth = line_width)
     return
 
 

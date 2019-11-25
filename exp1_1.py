@@ -21,7 +21,7 @@ def exp1_1_main(input_file_path_str, recalc_flag, redraw_flag, first_scenario, l
 
 
 input_file_path_str = 'C:\\Users\\Guy\\PycharmProjects\\Exp1Scenarios2\\Exp1-Input.xlsx'
-exp1_1_main(input_file_path_str, 1, 1, 22, 22)
+exp1_1_main(input_file_path_str, 1, 1, 23, 23)
 # from rkf45 import *
 # def my_cos(t, y):
 #     return numpy.ones(len(y)) * math.cos(t)
