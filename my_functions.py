@@ -9,14 +9,15 @@ from rk4 import *
 from rkf45 import *
 from IPython.display import display, Markdown, Latex
 
-def make_random_matrix(num_rows=3, num_columns=3, seed_index=1):
+def make_random_matrix(num_rows=3, num_columns=3, seed_index=1, loc = '-1', max_value):
     from random import seed
     from random import randint
+    from random import uniform
     seed(seed_index)
     matrix = numpy.zeros((num_rows, num_columns))
     for i in range(num_rows):
         for j in range(num_columns):
-            matrix[i][j] = randint(0, 100)/100
+            matrix[i][j] = uniform(0, max_value)
     print(matrix)
     return matrix
 
@@ -62,15 +63,15 @@ def read_input(input_file_path_str):
     return data
 
 
-def run_scenario(input_struct):
+def run_scenario(input_file_path, input_struct):
     scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method, _, time_step, relerror, \
-    abserror =  init_scenario_data(input_struct)
+    abserror =  init_scenario_data(input_file_path, input_struct)
 
     run_lin_dynamics(scenarioid, matrix, x1_0, maxtime, resultspath, dynamicModel, integration_method, time_step, relerror, abserror)
     return
 
 
-def init_scenario_data(input_struct):
+def init_scenario_data(input_file_path, input_struct):
     scenarioid = int(input_struct[0])
     loc = input_struct[1]
     random_matrix_size = int(input_struct[2])
@@ -84,10 +85,12 @@ def init_scenario_data(input_struct):
     time_step = input_struct[10]
     relerr = input_struct[11]
     abserr = input_struct[12]
-    if loc == -1:
-        matrix = make_random_matrix(random_matrix_size, random_matrix_size, seed_index)
+    if loc == -1 or loc == -2 or loc == -3:
+        matrix = make_random_matrix(random_matrix_size, random_matrix_size, seed_index, loc)
     else:
         matrix = load_matrix_from_file(loc, random_matrix_size)
+    if resultspath == -1:
+        resultspath = input_file_path + 'Run' + str(scenarioid) + '\\'
     return scenarioid, loc, matrix, x1_0, maxtime, resultspath, dynamic_model, integration_method, compare_to, \
            time_step, relerr, abserr
 
@@ -241,9 +244,9 @@ def print_statevector(statevector, time, resultspath, scenarioid, iterations):
     return
 
 
-def plot_scenario(scenariodata):
+def plot_scenario(input_file_path, scenariodata):
     scenarioid, _, matrix, x1_0, maxtime, resultspath, dynamic_model, integration_method, compare_to, time_step, \
-        relerr, abserr = init_scenario_data(scenariodata)
+        relerr, abserr = init_scenario_data(input_file_path, scenariodata)
     # resultspath = scenariodata[5]
     # scenarioid = int(scenariodata[0])
     # x1_0 = scenariodata[3]
